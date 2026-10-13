@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ラジオ体操">
+<meta name="theme-color" content="#fff7e6">
+<title>ラジオ体操スタンプ</title>
+<style>
+:root{--bg:#fff7e6;--card:#fff;--ink:#3a2e1f;--sub:#8a7a63;--main:#e8590c;--main-d:#c44a08;--line:#f0e2c8;--ok:#2f9e44}
+@media (prefers-color-scheme:dark){:root{--bg:#1e1a14;--card:#2a241b;--ink:#f5ead6;--sub:#a99a82;--line:#3d3425}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,"Hiragino Sans",sans-serif}
+.screen{display:none;min-height:100%;padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));flex-direction:column;align-items:center;max-width:480px;margin:0 auto}
+.screen.on{display:flex}
+h1{font-size:26px;margin:24px 0 4px}
+.sub{color:var(--sub);font-size:15px;margin:0 0 28px}
+.streak{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 22px;margin-bottom:32px;text-align:center}
+.streak b{font-size:36px;color:var(--main)}
+.btn{width:100%;border:0;border-radius:20px;font-size:22px;font-weight:700;padding:26px 16px;margin:8px 0;cursor:pointer;background:var(--main);color:#fff;box-shadow:0 4px 0 var(--main-d)}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--main-d)}
+.btn.sec{background:var(--card);color:var(--ink);border:2px solid var(--line);box-shadow:0 4px 0 var(--line)}
+.link{background:none;border:0;color:var(--sub);font-size:14px;text-decoration:underline;margin-top:auto;padding:20px;cursor:pointer}
+.note{color:var(--sub);font-size:13px;text-align:center;min-height:18px;margin:6px 0}
+/* play */
+.disc{width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,var(--bg) 0 14%,var(--main) 15% 100%);margin:40px 0 24px;animation:spin 4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bar{width:100%;height:10px;background:var(--line);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--main)}
+.time{color:var(--sub);margin:10px 0 30px;font-variant-numeric:tabular-nums}
+/* calendar */
+.head{display:flex;align-items:center;justify-content:space-between;width:100%;margin:8px 0 12px}
+.head button{border:0;background:var(--card);border:1px solid var(--line);color:var(--ink);width:44px;height:44px;border-radius:12px;font-size:20px;cursor:pointer}
+.head span{font-size:20px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;width:100%}
+.dow{text-align:center;font-size:13px;color:var(--sub);padding:4px 0}
+.dow:first-child,.day.sun{color:#e03131}.dow:last-child,.day.sat{color:#1c7ed6}
+.day{aspect-ratio:1;background:var(--card);border:1px solid var(--line);border-radius:12px;position:relative;font-size:13px;padding:4px 6px;color:inherit}
+.day.empty{background:none;border:0}
+.day.today{border:2px solid var(--main)}
+.day.focus{animation:pulse 1s ease-in-out infinite;border:3px solid var(--main);cursor:pointer;background:#fff3e0}
+@media (prefers-color-scheme:dark){.day.focus{background:#4a3318}}
+@keyframes pulse{50%{transform:scale(1.12);box-shadow:0 0 0 6px rgba(232,89,12,.25)}}
+.stamp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#e03131;font-weight:900}
+.stamp span{width:80%;aspect-ratio:1;border:3px solid #e03131;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(-12deg);opacity:.9}
+.stamp.pop span{animation:pop .45s cubic-bezier(.2,2,.4,1)}
+@keyframes pop{from{transform:scale(2.5) rotate(-30deg);opacity:0}}
+.msg{background:var(--main);color:#fff;border-radius:14px;padding:12px 16px;margin:0 0 12px;font-weight:700;text-align:center;width:100%}
+.count{color:var(--sub);margin:16px 0}
+</style>
+</head>
+<body>
+
+<section id="start" class="screen">
+  <h1>ラジオ体操</h1>
+  <p class="sub" id="today"></p>
+  <div class="streak"><b id="streak">0</b> 日連続<div class="note" id="total"></div></div>
+  <button class="btn" id="go">ラジオ体操を始める</button>
+  <button class="btn sec" id="cal">カレンダーを見る</button>
+  <div class="note" id="startNote"></div>
+  <button class="link" id="pick">曲ファイルを選ぶ／変更する</button>
+  <input type="file" id="file" accept="audio/*,.m4a,.mp3" hidden>
+</section>
+
+<section id="play" class="screen">
+  <h1>体操中…</h1>
+  <div class="disc"></div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="time" id="time">0:00</div>
+  <button class="btn sec" id="stop">やめる</button>
+</section>
+
+<section id="calendar" class="screen">
+  <div class="msg" id="doneMsg" hidden>おつかれさまでした！今日の日付をタップしてスタンプ</div>
+  <div class="head"><button id="prev">‹</button><span id="ym"></span><button id="next">›</button></div>
+  <div class="grid" id="grid"></div>
+  <div class="count" id="count"></div>
+  <button class="btn sec" id="back">もどる</button>
+</section>
+
+<audio id="audio" preload="auto" playsinline></audio>
+
+<script>
+const $=id=>document.getElementById(id);
+const audio=$('audio');
+const KEY='radiotaisou.stamps';
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr=()=>ymd(new Date());
+
+/* ---- stamps (localStorage) ---- */
+function load(){try{return new Set(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch(e){return new Set()}}
+function save(s){try{localStorage.setItem(KEY,JSON.stringify([...s]))}catch(e){}}
+let stamps=load();
+
+/* ---- music (IndexedDB) ---- */
+function db(){return new Promise((res,rej)=>{const r=indexedDB.open('radiotaisou',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function putFile(f){const d=await db();return new Promise((res,rej)=>{const t=d.transaction('f','readwrite');t.objectStore('f').put(f,'music');t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function getFile(){const d=await db();return new Promise((res,rej)=>{const r=d.transaction('f').objectStore('f').get('music');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+let hasMusic=false;
+async function prepareAudio(){
+  try{
+    const f=await getFile();
+    if(f){ if(audio.dataset.u)URL.revokeObjectURL(audio.dataset.u); const u=URL.createObjectURL(f); audio.dataset.u=u; audio.src=u; hasMusic=true; $('startNote').textContent='曲：'+(f.name||'設定済み'); return}
+  }catch(e){}
+  hasMusic=false; $('startNote').textContent='最初に曲ファイルを選んでください（下のリンク）';
+}
+
+/* ---- screens ---- */
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id)); window.scrollTo(0,0)}
+function streak(){let n=0,d=new Date(); if(!stamps.has(ymd(d)))d.setDate(d.getDate()-1); while(stamps.has(ymd(d))){n++;d.setDate(d.getDate()-1)} return n}
+function renderStart(){
+  const d=new Date(); $('today').textContent=`${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
+  $('streak').textContent=streak(); $('total').textContent=`これまでに ${stamps.size} 回`;
+  show('start');
+}
+
+/* ---- calendar ---- */
+let view=new Date(); view.setDate(1);
+let focusMode=false;
+function renderCal(){
+  const y=view.getFullYear(),m=view.getMonth();
+  $('ym').textContent=`${y}年${m+1}月`;
+  const g=$('grid'); g.innerHTML='';
+  '日月火水木金土'.split('').forEach(c=>{const e=document.createElement('div');e.className='dow';e.textContent=c;g.appendChild(e)});
+  const first=new Date(y,m,1).getDay(), last=new Date(y,m+1,0).getDate(), t=todayStr();
+  for(let i=0;i<first;i++){const e=document.createElement('div');e.className='day empty';g.appendChild(e)}
+  let cnt=0;
+  for(let d=1;d<=last;d++){
+    const key=`${y}-${pad(m+1)}-${pad(d)}`, wd=(first+d-1)%7;
+    const e=document.createElement('button'); e.type='button';
+    e.className='day'+(wd===0?' sun':wd===6?' sat':'')+(key===t?' today':'');
+    e.textContent=d;
+    if(stamps.has(key)){cnt++;const s=document.createElement('div');s.className='stamp';s.innerHTML='<span>済</span>';e.appendChild(s)}
+    else if(focusMode&&key===t){e.classList.add('focus');e.onclick=()=>stampToday(e)}
+    g.appendChild(e);
+  }
+  $('count').textContent=`この月：${cnt} 日 実施`;
+  $('doneMsg').hidden=!focusMode;
+}
+function stampToday(el){
+  stamps.add(todayStr()); save(stamps); focusMode=false;
+  el.classList.remove('focus'); el.onclick=null;
+  const s=document.createElement('div');s.className='stamp pop';s.innerHTML='<span>済</span>';el.appendChild(s);
+  $('doneMsg').hidden=true;
+  if(navigator.vibrate)navigator.vibrate(60);
+  setTimeout(renderStart,1300);
+}
+function openCal(focus){focusMode=focus; view=new Date(); view.setDate(1); renderCal(); show('calendar')}
+
+/* ---- play ---- */
+const fmt=s=>`${Math.floor(s/60)}:${pad(Math.floor(s%60))}`;
+$('go').onclick=async()=>{
+  if(!hasMusic){$('startNote').textContent='先に曲ファイルを選んでください'; $('file').click(); return}
+  audio.currentTime=0;
+  try{await audio.play()}catch(e){$('startNote').textContent='再生できませんでした。曲ファイルを選び直してください';return}
+  show('play');
+};
+audio.ontimeupdate=()=>{if(audio.duration){$('prog').style.width=(audio.currentTime/audio.duration*100)+'%';$('time').textContent=fmt(audio.currentTime)+' / '+fmt(audio.duration)}};
+audio.onended=()=>openCal(!stamps.has(todayStr())); // 既にスタンプ済みなら通常表示
+$('stop').onclick=()=>{audio.pause();renderStart()};
+$('cal').onclick=()=>openCal(false);
+$('back').onclick=()=>{focusMode=false;renderStart()};
+$('prev').onclick=()=>{view.setMonth(view.getMonth()-1);renderCal()};
+$('next').onclick=()=>{view.setMonth(view.getMonth()+1);renderCal()};
+$('pick').onclick=()=>$('file').click();
+$('file').onchange=async e=>{const f=e.target.files[0]; if(!f)return; await putFile(f); await prepareAudio()};
+
+/* 画面オフ対策（対応端末のみ） */
+let wl=null;
+audio.onplay=async()=>{try{wl=await navigator.wakeLock?.request('screen')}catch(e){}};
+audio.onpause=()=>{try{wl?.release()}catch(e){}};
+
+if(navigator.storage?.persist)navigator.storage.persist();
+prepareAudio(); renderStart();
+</script>
+</body>
+</html>
